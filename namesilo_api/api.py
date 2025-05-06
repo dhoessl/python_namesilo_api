@@ -74,110 +74,6 @@ class NamesiloAPIReturnError(errors.NamesiloAPIError):
                 + ": Api Call was not successfull"
 
 
-class Domain:
-    def __init__(self, key: str, domain: str) -> None:
-        """ Class to manage all hosts of a specific domain.
-            domain and api key are required to fetch all data.
-        """
-        self.domain = domain
-        self.api_uri = "https://www.namesilo.com/api/"
-        self.api_opts = f"?version=1&type=json&key={key}"
-        self.records = []
-
-    def get_records(self) -> None:
-        """ Request all data for a domain from api.
-            for every host an Record object is created and put into
-            self.records list.
-        """
-        api_response = get(
-            f"{self.api_uri}dnsListRecords{self.api_opts}&domain={self.domain}"
-        )
-        if api_response.json()["reply"]["detail"] != "success":
-            raise NamesiloAPIReturnError("List Domains", self.domain)
-        # Clear current saved records
-        self.records = []
-        # Add new records to domain
-        for record in api_response.json()["reply"]["resource_record"]:
-            new_record = Record(self.api_opts, self.domain)
-            new_record.set_values_from_api(record)
-            self.records.append(new_record)
-
-    def create_record(
-            self,
-            host: str, record_type: str, value: str,
-            ttl: int = None, distance: int = None
-    ) -> None:
-        """ Creates a new record. If the record already exists (host + type)
-            raise an Error
-        """
-        # Check if record already exists
-        for record in self.records:
-            if record.host == host and record_type == record.type:
-                raise RecordExistsError(
-                    record.id, record.host, record.type, host, record_type
-                )
-        # record does not exist, so create a new one
-        record = Record(self.api_opts, self.domain)
-        record.set_values(
-            host, record_type, value,
-            ttl=ttl, distance=distance
-        )
-        if record.add_record():
-            self.records.append(record)
-
-    def delete_record_by_id(self, id: str) -> None:
-        """ Searches Record based on id and deletes it """
-        for record in self.records:
-            if record.id == id:
-                record.delete_record()
-                return
-        raise RecordIDNotFoundError(id)
-
-    def delete_record_by_host_type(self, host: str, record_type: str) -> None:
-        """ Searches Record based on host and record type and deletes it """
-        for record in self.records:
-            if record.host == host and record.type == record_type:
-                record.delete_record()
-                return
-        raise RecordHostTypeNotFoundError(host, record_type)
-
-    def update_record_by_id(
-        self, id: str, value: str = None,
-        ttl: int = None, distance: int = None
-    ) -> None:
-        # Search record to update
-        for record in self.records:
-            if record.id == id:
-                update_record = record
-        # var to check if update is needed
-        update_needed = False
-        # update values
-        if value and update_record.value != value:
-            update_record.value = value
-            update_needed = True
-        if ttl and update_record.ttl != ttl:
-            update_record.ttl = ttl
-            update_needed = True
-        if distance and update_record.distance != distance:
-            update_record.distance = distance
-            update_needed = True
-        # Update record if required
-        if update_needed:
-            update_record.update_record()
-
-    def update_record_by_host_type(
-        self, host: str, record_type: str,
-        value: str = None, ttl: int = None, distance: int = None
-    ) -> None:
-        # Search for record by host and record type
-        for record in self.records:
-            if record.host == host and record.type == record_type:
-                self.update_record_by_id(
-                    record.id, value=value,
-                    ttl=ttl, distance=distance
-                )
-
-
 class Record:
     allowed_types = ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "CAA"]
 
@@ -297,3 +193,113 @@ class Record:
             raise RecordValueError("value")
         if not self.ttl:
             raise RecordValueError("ttl")
+
+
+class Domain:
+    def __init__(self, key: str, domain: str) -> None:
+        """ Class to manage all hosts of a specific domain.
+            domain and api key are required to fetch all data.
+        """
+        self.domain = domain
+        self.api_uri = "https://www.namesilo.com/api/"
+        self.api_opts = f"?version=1&type=json&key={key}"
+        self.records = []
+
+    def get_records(self) -> None:
+        """ Request all data for a domain from api.
+            for every host an Record object is created and put into
+            self.records list.
+        """
+        api_response = get(
+            f"{self.api_uri}dnsListRecords{self.api_opts}&domain={self.domain}"
+        )
+        if api_response.json()["reply"]["detail"] != "success":
+            raise NamesiloAPIReturnError("List Domains", self.domain)
+        # Clear current saved records
+        self.records = []
+        # Add new records to domain
+        for record in api_response.json()["reply"]["resource_record"]:
+            new_record = Record(self.api_opts, self.domain)
+            new_record.set_values_from_api(record)
+            self.records.append(new_record)
+
+    def create_record(
+            self,
+            host: str, record_type: str, value: str,
+            ttl: int = None, distance: int = None
+    ) -> None:
+        """ Creates a new record. If the record already exists (host + type)
+            raise an Error
+        """
+        # Check if record already exists
+        for record in self.records:
+            if record.host == host and record_type == record.type:
+                raise RecordExistsError(
+                    record.id, record.host, record.type, host, record_type
+                )
+        # record does not exist, so create a new one
+        record = Record(self.api_opts, self.domain)
+        record.set_values(
+            host, record_type, value,
+            ttl=ttl, distance=distance
+        )
+        if record.add_record():
+            self.records.append(record)
+
+    def delete_record_by_id(self, id: str) -> None:
+        """ Searches Record based on id and deletes it """
+        for record in self.records:
+            if record.id == id:
+                record.delete_record()
+                return
+        raise RecordIDNotFoundError(id)
+
+    def delete_record_by_host_type(self, host: str, record_type: str) -> None:
+        """ Searches Record based on host and record type and deletes it """
+        for record in self.records:
+            if record.host == host and record.type == record_type:
+                record.delete_record()
+                return
+        raise RecordHostTypeNotFoundError(host, record_type)
+
+    def update_record_by_id(
+        self, id: str, value: str = None,
+        ttl: int = None, distance: int = None
+    ) -> None:
+        # Search record to update
+        for record in self.records:
+            if record.id == id:
+                update_record = record
+        # var to check if update is needed
+        update_needed = False
+        # update values
+        if value and update_record.value != value:
+            update_record.value = value
+            update_needed = True
+        if ttl and update_record.ttl != ttl:
+            update_record.ttl = ttl
+            update_needed = True
+        if distance and update_record.distance != distance:
+            update_record.distance = distance
+            update_needed = True
+        # Update record if required
+        if update_needed:
+            update_record.update_record()
+
+    def update_record_by_host_type(
+        self, host: str, record_type: str,
+        value: str = None, ttl: int = None, distance: int = None
+    ) -> None:
+        # Search for record by host and record type
+        for record in self.records:
+            if record.host == host and record.type == record_type:
+                self.update_record_by_id(
+                    record.id, value=value,
+                    ttl=ttl, distance=distance
+                )
+
+    def get_host(self, host: str, record_type: str) -> Record:
+        for record in self.records:
+            if record.host == host and record.type == record_type:
+                return record
+        return None

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='namesilo_api',
-    version='0.1-0',
+    version='0.1-1',
     description='A Python3 wrapper for namesilos API',
     url='https://github.com/dhoessl/python_namesilo_api',
     author="Dominic Hößl",
